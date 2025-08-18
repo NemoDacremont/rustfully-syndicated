@@ -6,7 +6,6 @@ use crate::RSSSource;
 
 pub struct CSOSource {
     prefix: String,
-    document: Html,
 }
 
 pub struct CSOArticle<'a> {
@@ -17,39 +16,29 @@ impl CSOSource {
     pub fn default() -> CSOSource {
         CSOSource {
             prefix: "https://www.csoonline.com/privacy".to_string(),
-            document: Html::new_document()
         }
     }
+}
 
-    async fn get_document(&self) -> Result<Html, Box<dyn std::error::Error>> {
+impl RSSSource for CSOSource {
+    async fn get(&self) -> Result<Vec<Item>, anyhow::Error> {
         let page = reqwest::get(self.prefix.clone())
             .await?
             .text()
             .await?;
 
-        Ok(Html::parse_document(&page))
-    }
+        let document = Html::parse_document(&page);
 
-    async fn get_articles(&mut self) -> Result<Vec<CSOArticle<'_>>, Box<dyn std::error::Error>> {
-        self.document = self.get_document().await?;
         let articles_selector = Selector::parse(".latest-content__content-featured, .latest-content__card-main, #article .content-listing-articles__row").unwrap();
+        let articles = document.select(&articles_selector).map(|value| CSOArticle{el: value});
 
-        let articles = self.document.select(&articles_selector).map(|value| CSOArticle{el: value}).collect();
-        Ok(articles)
-    }
-}
-
-impl RSSSource for CSOSource {
-    async fn get(&mut self) -> Result<Vec<Item>, Box<dyn std::error::Error>> {
-        Ok(self.get_articles()
-            .await?
-            .iter()
+        Ok(articles
             .map(|el| el.into())
             .collect())
     }
 }
 
-impl Into<Item> for &CSOArticle<'_> {
+impl Into<Item> for CSOArticle<'_> {
     fn into(self) -> Item {
         let title_selector = Selector::parse("h3").unwrap();
         let title: String = self.el.select(&title_selector).next().unwrap().text().next().unwrap().into();

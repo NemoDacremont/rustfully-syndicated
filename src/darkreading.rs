@@ -7,7 +7,6 @@ use crate::RSSSource;
 
 pub struct DarkReadingSource {
     prefix: String,
-    document: Html,
 }
 
 pub struct DarkReadingArticle<'a> {
@@ -18,56 +17,34 @@ impl DarkReadingSource {
     pub fn default() -> DarkReadingSource {
         DarkReadingSource {
             prefix: "https://www.darkreading.com/cyber-risk/data-privacy".to_string(),
-            document: Html::new_document()
         }
     }
+}
 
-    async fn get_document(&self) -> Result<Html, Box<dyn std::error::Error>> {
-  //         -H 'Upgrade-Insecure-Requests: 1' \
-  // -H 'Sec-Fetch-Dest: document' \
-  // -H 'Sec-Fetch-Mode: navigate' \
-  // -H 'Sec-Fetch-Site: cross-site' \
-  // -H 'Priority: u=0, i' \
-  // -H 'TE: trailers'
-
-
+impl RSSSource for DarkReadingSource {
+    async fn get(&self) -> Result<Vec<Item>, anyhow::Error> {
         let req = reqwest::Client::new().get(self.prefix.clone())
             .header(USER_AGENT, "Mozilla/5.0 (X11; U; Linux x86_64; en-ca) AppleWebKit/531.2+ (KHTML, like Gecko) Version/5.0 Safari/531.2+")
             .header(ACCEPT, "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
             .header(ACCEPT_LANGUAGE, "en-US,en;q=0.5")
             .header("Sec-GPC", "1");
-            // .header(ACCEPT_ENCODING, "gzip");
 
-        let freq = req.try_clone().unwrap().build().unwrap();
-        // dbg!(freq.headers());
 
         let res = req.send().await?;
 
         let page = res.text().await?;
 
-        Ok(Html::parse_document(&page))
-    }
+        let document = Html::parse_document(&page);
 
-    async fn get_articles(&mut self) -> Result<Vec<DarkReadingArticle<'_>>, Box<dyn std::error::Error>> {
-        self.document = self.get_document().await?;
         let articles_selector = Selector::parse(".ListContent-Body .ContentPreview").unwrap();
+        let articles = document.select(&articles_selector).map(|value| DarkReadingArticle{el: value});
 
-        let articles = self.document.select(&articles_selector).map(|value| DarkReadingArticle{el: value}).collect();
-        Ok(articles)
+        let items: Vec<Item> = articles.map(|el| el.into()).collect();
+        Ok(items)
     }
 }
 
-impl RSSSource for DarkReadingSource {
-    async fn get(&mut self) -> Result<Vec<Item>, Box<dyn std::error::Error>> {
-        Ok(self.get_articles()
-            .await?
-            .iter()
-            .map(|el| el.into())
-            .collect())
-    }
-}
-
-impl Into<Item> for &DarkReadingArticle<'_> {
+impl Into<Item> for DarkReadingArticle<'_> {
     fn into(self) -> Item {
         let title_selector = Selector::parse(".ArticlePreview-Title, .ListPreview-Title, .ContentCard-Title").unwrap();
         let title: String = self.el.select(&title_selector).next().unwrap().text().next().unwrap().into();
