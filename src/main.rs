@@ -2,7 +2,7 @@ use chrono::DateTime;
 use reqwest::header::CONTENT_TYPE;
 use rss::{ChannelBuilder, Item};
 use axum::{
-    body::Body, handler::HandlerWithoutStateExt, http::StatusCode, response::{IntoResponse, Response}, routing::get, Router
+    http::StatusCode, response::{IntoResponse, Response}, routing::get, Router
 };
 
 use crate::{csoonline::CSOSource, darkreading::DarkReadingSource, krebs::KrebsSource};

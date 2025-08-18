@@ -10,6 +10,7 @@ pub struct DarkReadingSource {
 }
 
 pub struct DarkReadingArticle<'a> {
+    prefix: String,
     el: ElementRef<'a>,
 }
 
@@ -29,15 +30,13 @@ impl RSSSource for DarkReadingSource {
             .header(ACCEPT_LANGUAGE, "en-US,en;q=0.5")
             .header("Sec-GPC", "1");
 
-
         let res = req.send().await?;
-
         let page = res.text().await?;
 
         let document = Html::parse_document(&page);
 
         let articles_selector = Selector::parse(".ListContent-Body .ContentPreview").unwrap();
-        let articles = document.select(&articles_selector).map(|value| DarkReadingArticle{el: value});
+        let articles = document.select(&articles_selector).map(|value| DarkReadingArticle{el: value, prefix: self.prefix.to_owned()});
 
         let items: Vec<Item> = articles.map(|el| el.into()).collect();
         Ok(items)
@@ -48,7 +47,9 @@ impl Into<Item> for DarkReadingArticle<'_> {
     fn into(self) -> Item {
         let title_selector = Selector::parse(".ArticlePreview-Title, .ListPreview-Title, .ContentCard-Title").unwrap();
         let title: String = self.el.select(&title_selector).next().unwrap().text().next().unwrap().into();
-        let link: String = self.el.select(&title_selector).next().unwrap().attr("href").unwrap().into();
+        let link_suffix: String = self.el.select(&title_selector).next().unwrap().attr("href").unwrap().into();
+        let mut link = self.prefix;
+        link.push_str(&link_suffix);
 
         let date_selector = Selector::parse(".ArticlePreview-Date, .ContentCard-Date, .ListPreview-Date").unwrap();
         let date_raw = self.el.select(&date_selector).next().unwrap().text().next().unwrap();
