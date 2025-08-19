@@ -19,11 +19,14 @@ COPY ./src ./src/
 
 RUN cargo build --release --target x86_64-unknown-linux-musl
 
-# idk really what's going on, but it won't work with regular alpine:3.22
-FROM rust:alpine
+FROM alpine:3.22
 
 WORKDIR /app
 
+# Required to work with openssl
+RUN apk add gcc
+
 COPY --from=builder /build/target/x86_64-unknown-linux-musl/release/rustfully-syndicated .
+
 
 CMD ["/app/rustfully-syndicated"]
