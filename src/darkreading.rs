@@ -17,7 +17,7 @@ pub struct DarkReadingArticle<'a> {
 impl DarkReadingSource {
     pub fn default() -> DarkReadingSource {
         DarkReadingSource {
-            prefix: "https://www.darkreading.com/cyber-risk/data-privacy".to_string(),
+            prefix: "https://www.darkreading.com".to_string(),
         }
     }
 }
@@ -35,10 +35,11 @@ impl RSSSource for DarkReadingSource {
 
         let document = Html::parse_document(&page);
 
-        let articles_selector = Selector::parse(".ListContent-Body .ContentPreview").unwrap();
+        let articles_selector = Selector::parse(".LatestFeatured-Content_left .ContentPreview").unwrap();
         let articles = document.select(&articles_selector).map(|value| DarkReadingArticle{el: value, prefix: self.prefix.to_owned()});
 
         let items: Vec<Item> = articles.map(|el| el.into()).collect();
+
         Ok(items)
     }
 }
