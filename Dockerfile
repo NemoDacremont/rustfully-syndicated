@@ -24,7 +24,7 @@ FROM alpine:3.22
 WORKDIR /app
 
 # Required to work with openssl
-RUN apk add gcc
+RUN apk add libgcc
 
 COPY --from=builder /build/target/x86_64-unknown-linux-musl/release/rustfully-syndicated .
 
