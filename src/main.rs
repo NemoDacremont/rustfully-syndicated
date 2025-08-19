@@ -1,3 +1,5 @@
+use std::env;
+
 use chrono::DateTime;
 use reqwest::header::CONTENT_TYPE;
 use rss::{ChannelBuilder, Item};
@@ -38,8 +40,12 @@ async fn get_channel() -> Result<rss::Channel, Box<dyn std::error::Error>> {
     items.sort_by_key(|el| DateTime::parse_from_rfc2822(el.pub_date().unwrap_or_default()).unwrap_or_default());
     items.reverse();
 
+    let rs_prefix= env::var("RS_PREFIX")
+        .unwrap_or("http://localhost:3000".to_string());
+
     let channel = ChannelBuilder::default()
         .title("Rustfully syndicated")
+        .link(rs_prefix)
         .items(items)
         .build();
 
